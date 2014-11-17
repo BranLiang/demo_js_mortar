@@ -1,5 +1,5 @@
-// Namespace our entire KABOOM game within a
-// single namespace.
+// Namespace our entire MortarLauncher game within a
+// single namespace called "ML"
 // This game will allow a player to fire mortars
 // from among several launchers they start with.
 // These mortars are positioned by moving the mouse,
@@ -7,16 +7,54 @@
 // by releasing the mouse button.
 // They explode when they hit a boundary of the window.
 
-var KABOOM = {
+var ML = {
 
   // **** UTILITY FUNCTIONS ****
   // These functions are more general and used
   // by any of the modules below
 
-  // Finds the angle between two sets of coords.
-  // Used to reposition the launcher based on the
-  // coordinates of the mouse.
-  coordsToAngle: function(coordsA, coordsB){},
+
+  // Finds the angle between the coords of a launcher
+  // and the current mouse position
+  mouseCoordsToAngle: function(coords){
+    console.log("...coords-to-angle...")
+
+    var mousePos = ML.MainModule.mousePos; 
+    var distBtw = this.distanceBetween(mousePos, coords);
+
+    // If they're the same point, eject!
+    if( distBtw == 0 ){
+      return 0;
+    }
+
+    var xDist = Math.abs( coords.x - mousePos.x ); // make positive
+
+    // Remember your trigonometry?  ArcCos!
+    var radians = Math.acos( xDist / distBtw );
+    var degrees = this.radsToDegrees(radians);
+
+    console.log("Just measured " + degrees + " degrees!");
+
+    return degrees;
+  },
+
+
+  // Find the distance between two coordinates
+  distanceBetween: function(coordsA, coordsB){
+    console.log("distance between:");
+    console.log(coordsA);
+    console.log(coordsB);
+    xDist = coordsA.x - coordsB.x;
+    yDist = coordsA.y - coordsB.y;
+    return Math.pow( Math.pow( xDist, 2) + Math.pow( yDist, 2 ), 0.5);
+  },
+
+
+  // Convert radians to degrees
+  radsToDegrees: function(rads){
+    return rads * 360 / ( 2 * Math.PI );
+  },
+
 
   // Apply equations of motion to an object with
   // an initial position and velocity.
@@ -32,6 +70,8 @@ var KABOOM = {
 
 
 
+
+
   // **** LAUNCHER ****
 
   // Set up a Launcher object.
@@ -41,38 +81,74 @@ var KABOOM = {
   // which creates a new mortar with an initial
   // velocity which shoots out at whatever angle
   // the launcher was last pointing at.
-  Launcher: (function (){  
-
-    // Position is an object with x and y coords
-    // All these variables are intended to stay private
-    var _fuel, _angle, _pos, _fueling;
-
-    // Hard code the initial ammo
-    var _ammo = 10;
+  LauncherModule: (function (){          
 
     // Constructor for a new Launcher
-    function Launcher(x){}
+    // Its prototype is added to by the 
+    // functions defined below
+    function Launcher(posX){
+      this.pos = {  x: posX, 
+                    y: ML.BoardModule.bounds.bottom };
+      this.angle = 0;
+      this.width = 100;
+      this.ammo = 10;
+      this.fueling = false;
+      this.fuel = 0;
+    }
+
 
     // Create a mortar at that position with an initial
     // velocity which is derived from the _fuel
     // Remove _fueling state and reset _fuel
-    function fireMortar(){}
+    Launcher.prototype.fireMortar = function(){
+      console.log("TODO: Fire Mortar!");
+    }
+
 
     // grab mouse position, update angle
     // if _fueling, increment fuel
-    function tic(){}
+    Launcher.prototype.tic = function(){
+      this.updateAngle();
+    }
+
 
     // Toggle the fueling state to active
-    function startFueling(){}
+    Launcher.prototype.startFueling = function(){
+      console.log("TODO: Fire Mortar!");
+    }
+
 
     // Render the launcher at the correct angle
-    function render(){}
+    // `this` will be the Launcher instance 
+    Launcher.prototype.render = function(){
+      console.log("...rendering launcher...");
 
-    // Update _angle based on mouse position
-    function _updateAngle(){}
+      // Build the launcher image element piece by piece.
+      $launcherImage = $("<img>")
+          .attr("src","http://s3.amazonaws.com/viking_education/web_development/web_app_eng/rocket_launcher.png")
+          .attr("width", this.width + "px")
+          .addClass("launcher")
+          .css("left",this.pos.x - this.width / 2)
+          .css("top",this.pos.y - this.width / 4)
+          .css("-ms-transform","rotate(" + this.angle + "deg)") // IE 9
+          .css("-webkit-transform", "rotate(" + this.angle + "deg)") // Chrome, Safari, Opera
+          .css("transform", "rotate(" + this.angle + "deg)");
+      $("#playing-field").append($launcherImage);
+    }
+
+
+    // Update angle based on mouse position
+    // CSS rotates clockwise by default, hence the negative
+    Launcher.prototype.updateAngle = function(){
+      this.angle = -ML.mouseCoordsToAngle(this.pos);
+    }
+
 
     // Return the public vars and methods
-    return {};
+    return {
+      Launcher: Launcher,
+    };
+
   })(),
 
 
@@ -86,7 +162,7 @@ var KABOOM = {
   // Each turn, it will be asked to update its
   // position based on its velocity and check whether
   // it should have exploded
-  Mortar: (function(){
+  MortarModule: (function(){
 
     // Position and velocity variables are objects
     // with x and y coordinates.
@@ -99,11 +175,6 @@ var KABOOM = {
     // all necessary variables
     function Mortar(x,y){}
 
-    // Explode the mortar by removing it from the main
-    // mortars queue and replacing it with an Explosion
-    // that's created at the nearest in-bounds coords
-    function explode(){}
-
     // Draw a circle at the right position
     function render(){}
 
@@ -112,8 +183,17 @@ var KABOOM = {
     // If the new position is out of bounds, explode.
     function tic(){}
 
+    // Explode the mortar by removing it from the main
+    // mortars queue and replacing it with an Explosion
+    // that's created at the nearest in-bounds coords
+    function _explode(){}
+
     // Return all public vars and functions
-    return {};
+    return {
+      Mortar: Mortar,
+      render: render,
+      tic: tic
+    };
   })(),
 
 
@@ -122,7 +202,7 @@ var KABOOM = {
 
   // The Explosion object which a mortar converts
   // into once it explodes. Inherits from Mortar.
-  Explosion: (function(){
+  ExplosionModule: (function(){
 
     // These properties override the parent ones
     var _pos, _radius, _expansionRate;
@@ -145,7 +225,10 @@ var KABOOM = {
     function _finishExploding(){}
 
     // Return all public functions and vars
-    return {};
+    return {
+      Explosion: Explosion,
+      tic: tic
+    };
   })(),
 
 
@@ -154,17 +237,36 @@ var KABOOM = {
   // **** BOARD ****
 
   // The Board is the keeper of all things positional
-  Board: (function(){
+  BoardModule: (function(){
 
     // Set up board properties which will be accessed
     // by lots of other methods
-    var bounds = { topY:0, botY:0, leftX:0, rightX:0 };
+    // The coords of a typical boundary rect come as:
+    // {  bottom: 510, height: 502, left: 8, 
+    //    right: 810, top: 8, width: 802  }
+    // NOTE: 0,0 in the browser is the top left corner
 
-    // Create a new board that remembers Window dims
-    function Board(){}
+    // Hang onto the playing board element so we don't
+    // need to requery the DOM every time we want it
+    // We'll wait to set it until the new Board is
+    // created since the DOM hasn't been loaded yet
+    // right here
+    var $board; 
+    var bounds; 
 
-    // Queries the Window object for its latest dims
-    function getBoardCoords(){}
+    // We'll have to call this from MainModule after
+    // the DOM is loaded
+    function setBoardVars(){
+      this.$board = $("#playing-field");
+      this.bounds = this.$board.get(0).getBoundingClientRect();
+    }
+
+
+    // We need a getter because this is a module
+    // and otherwise 
+    function getBoardBounds(){
+      return bounds
+    }
 
     // Check if the coordinates are out-of-bounds
     function checkCoordsOutOfBounds(coords){}
@@ -173,9 +275,18 @@ var KABOOM = {
     // playing area into coords that are in-bounds
     function convertToInBoundsCoords(coords){}
 
+
     // Return all public methods and properties
-    return {};
+    return {
+      $board: $board,
+      bounds: bounds,
+      checkCoordsOutOfBounds: checkCoordsOutOfBounds,
+      convertToInBoundsCoords: convertToInBoundsCoords,
+      setBoardVars: setBoardVars
+    };
   })(),
+
+
 
 
 
@@ -184,14 +295,20 @@ var KABOOM = {
   // **** MAIN ****
 
   // The overall controller of the game setup and play
-  Main: (function(){
+  MainModule: (function(){
 
     // Keep track of the latest mouse position and
     // other more game-related objects
-    var mousePos, _firedMortars, _launchers, _activeLauncher;
+    var _activeLauncher; 
 
     // Hard code the initial number of launchers for now
     var _numLaunchers = 1;
+
+    // Keep track of our launchers and fired mortars
+    var _launchers = [];
+    var _firedMortars = [];
+    
+    var mousePos = { x: 0, y: 0 };
 
 
     // Set up launcher (default to 0,0 coords)
@@ -199,45 +316,125 @@ var KABOOM = {
     // Set up mousedown listener
     // Set up mouseup listener
     // Kick off game loop
-    function init(){ console.log("HI"); }
+    function init(){ 
+      console.log("Initializing Main..."); 
+      ML.BoardModule.setBoardVars();
+      _buildLaunchers();
+      _listenForMouseMove();
+      _listenForMouseDown();
+      _listenForMouseUp();
+      _startGameLoop();
+    }
+
 
     // Build the launchers that we need at the coords
     // we've passed in
-    function _buildLaunchers(launcherCoords){}
+    function _buildLaunchers(launcherCoords){
+      console.log("...building Launchers...");
+      for(var i = 0; i < _numLaunchers; i++){
+
+        // We'll just hard-code for now with one launcher
+        var launcherXPos = ML.BoardModule.bounds.left;
+        var launcher = new ML.LauncherModule.Launcher(launcherXPos);
+        _launchers.push( launcher );
+      }
+    }
+
 
     // Update the mousePos whenever the mouse moves
-    function _listenForMouseMove(){}
+    function _listenForMouseMove(){
+      ML.BoardModule.$board.on("mousemove",function(e){
+        ML.MainModule.mousePos = {
+          x: e.clientX,
+          y: e.clientY
+        }
+      })
+    }
+
 
     // When the player initiates a click
     // startFueling the activeLauncher
-    function _listenForMouseDown(){}
+    function _listenForMouseDown(){
+      $(window).on("mousedown",function(e){
+        console.log(e);
+      })
+    }
+
 
     // When the player releases a click
     // fireMortar from the activeLauncher
     // activateNextLauncher
-    function _listenForMouseUp(){}
+    function _listenForMouseUp(){
+      $(window).on("mouseup",function(e){
+        console.log(e);
+      })
+    }
+
 
     // On each tic of the game loop
     // clearRenderedObjects
     // render Mortars
-    function _tic(){}
+    function _tic(){
+      console.log("TIC!");
+      _ticLaunchers();
+      _ticMortars();
+      _clearRenderedObjects();
+      _renderLaunchers();
+      _renderMortars();
+    }
 
-    // Set the timeout to run _tic 
-    function _startGameLoop(){}
+
+    // Set the interval to run _tic 
+    function _startGameLoop(){
+      console.log("setting up game loop");
+      setInterval(function(){
+        _tic();
+      }, 100)
+    }
 
 
-    // Change the activeauncher to the next one 
+    // Change the activeLauncher to the next one 
     // which actually has ammo.
     // Throw an error ending the game if out of ammo
     // in all launchers
     function _activateNextLauncher(){}
 
+
     // Clears the whole board in prep for another render
-    function _clearRenderedObjects(){}
+    function _clearRenderedObjects(){
+      console.log("TODO: clear rendered objects");
+      ML.BoardModule.$board.html("");
+    }
+
+
+    // Run the increment "tic" on all launchers
+    function _ticLaunchers(){
+      _launchers.forEach(function(launcher){
+        launcher.tic();
+      })
+    }
+
+
+    // run the increment "tic" on all mortars
+    function _ticMortars(){
+
+    }
+
 
     // Go through the queue rendering all mortars and
     // explosions
-    function _renderMortars(){}
+    function _renderMortars(){
+      console.log("TODO: Render Mortars");
+    }
+
+
+    // Go through the queue rendering all launchers
+    function _renderLaunchers(){
+      _launchers.forEach(function(launcher, b, c){
+        launcher.render();
+      });
+    }
+
 
     // Return public properties and methods
     // Make sure mousePos is available
@@ -245,9 +442,13 @@ var KABOOM = {
       init: init,
       mousePos: mousePos
     };
+
   })(),
+
 };
 
 $(document).ready(function(){
-  KABOOM.Main.init()
+  ML.MainModule.init()
 });
+
+// Finale -- double check privacy
