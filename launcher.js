@@ -18,6 +18,7 @@ ML.LauncherModule = (function (){
   var _initialFuel = 1;
   var _maxFuel = 20;
   var _initialAmmo = 10;
+  var _vM = 2;              // Velocity multiplier
 
   // Constructor for a new Launcher
   // Its prototype is added to by the 
@@ -39,8 +40,8 @@ ML.LauncherModule = (function (){
   Launcher.prototype.fireMortar = function(){
 
     // Derive the initial velocity for the mortar
-    var xVel = Math.abs( this.fuel * Math.cos(this.angle) );
-    var yVel = -Math.abs( this.fuel * Math.sin(this.angle) );
+    var xVel = Math.abs( this.fuel * Math.cos(this.angle) * _vM );
+    var yVel = -Math.abs( this.fuel * Math.sin(this.angle) * _vM );
     var vel = { x: xVel, y: yVel };
 
     // Create the new mortar and add to 
@@ -74,19 +75,25 @@ ML.LauncherModule = (function (){
   // Render the launcher at the correct angle
   // `this` will be the Launcher instance 
   Launcher.prototype.render = function(){
-    console.log("...rendering launcher...");
+
+    var borderWidth = ( this.fuel - _initialFuel ) * 2;
+
+    // Do some trigonometry so the border doesn't push
+    // the launcher out of the way
+    var bdrOffsetY = Math.abs( borderWidth * Math.sin(this.angle) / 2 );
+    var bdrOffsetX = Math.abs( borderWidth * Math.cos(this.angle) ) + bdrOffsetY;
 
     // Build the launcher image element piece by piece.
     $launcherImage = $("<img>")
         .attr("src","http://s3.amazonaws.com/viking_education/web_development/web_app_eng/rocket_launcher.png")
         .attr("width", this.width + "px")
         .addClass("launcher")
-        .css("left",this.pos.x - this.width / 2)
-        .css("top",this.pos.y - this.width / 4)
+        .css("left",this.pos.x - this.width / 2 - bdrOffsetX )
+        .css("top",this.pos.y - this.width / 4 + bdrOffsetY )
         .css("-ms-transform","rotate(" + this.angle + "rad)") // IE 9
         .css("-webkit-transform", "rotate(" + this.angle + "rad)") // Chrome, Safari, Opera
         .css("transform", "rotate(" + this.angle + "rad)")
-        .css("border-left-width", ( this.fuel - _initialFuel ) * 2 + "px" );
+        .css("border-left-width", borderWidth + "px" );
     $("#playing-field").append($launcherImage);
   }
 

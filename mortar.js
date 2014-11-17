@@ -11,7 +11,7 @@ var ML = ML || {}
 // an Explosion object.
 // Each turn, it will be asked to update its
 // position based on its velocity and check whether
-// it should have exploded
+// it should be exploding
 ML.MortarModule = (function(){
 
   // Position and velocity variables are objects
@@ -30,7 +30,7 @@ ML.MortarModule = (function(){
     this.vel.x = vel.x;
     this.vel.y = vel.y;
     this.radius = _initialRadius;
-    this.exploded = false;
+    this.exploding = false;
   }
 
   // Draw a circle at the right position
@@ -42,6 +42,7 @@ ML.MortarModule = (function(){
         .css("left",    this.pos.x - this.radius / 2 )
         .css("top",     this.pos.y - this.radius / 2 )
     $("#playing-field").append($mortar);
+    return $mortar;
   }
 
   // For each "tic" of the game, increment
@@ -53,18 +54,29 @@ ML.MortarModule = (function(){
     this.vel.y = this.vel.y + .5;  // Gravity
 
     if(ML.BoardModule.checkCoordsOutOfBounds(this.pos)){
-      console.log(this.pos);
-      this.explode();
+      this.exploding = true;
     }
   }
 
-  // Explode the mortar by removing it from the main
-  // mortars queue and replacing it with an Explosion
+  // Explode the mortar by creating an Explosion
   // that's created at the nearest in-bounds coords
-  Mortar.prototype.explode = function(){
+  Mortar.prototype.convertToExplosion = function(){
     console.log("BOOM");
-    this.exploded = true;
+
+    // This will get a bit weird, but Explosions are
+    // children (via inheritance) of Mortars.
+    // In this case, we're passing the current Mortar
+    // instance to the child's constructor function so it
+    // can use this Mortar's attributes to initialize with.
+    // It's weird because the child Explosion will just
+    // turn around and immediately call the Mortar
+    // constructor function back with those attributes!
+    var explosion = new ML.ExplosionModule.Explosion(this);
+
+
+    return explosion;
   }
+
 
   // Return all public vars and functions
   return {

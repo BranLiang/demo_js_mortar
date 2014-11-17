@@ -16,8 +16,7 @@
 var ML = ML || {}
 
 
-
-  // The overall controller of the game setup and play
+// The overall controller of the game setup and play
 ML.MainModule = (function(){
 
   // Keep track of the latest mouse position and
@@ -100,11 +99,18 @@ ML.MainModule = (function(){
   // clearRenderedObjects
   // render Mortars
   function _tic(){
+
+    // Perform the behind-the-scenes work
     _ticLaunchers();
     _ticMortars();
+    _convertMortarsToExplosions();
+
+    // Perform the rendering work
     _clearRenderedObjects();
     _renderLaunchers();
     _renderMortars();
+
+    // Perform clean-up work
     _clearFadedExplosions();
   }
 
@@ -114,7 +120,7 @@ ML.MainModule = (function(){
     console.log("setting up game loop");
     setInterval(function(){
       _tic();
-    }, 100)
+    }, 10)
   }
 
 
@@ -139,13 +145,32 @@ ML.MainModule = (function(){
   }
 
 
+  // Convert any exploded Mortars into Explosions
+  // We'll otherwise treat these as normal Mortars
+  // until they fizzle out because they inherit
+  // from Mortars.  
+  // We're treating them polymorphically.
+  function _convertMortarsToExplosions(){
+
+    _firedMortars.forEach(function(mortar, index, array){
+      if(mortar.exploding == true){
+
+        // Get the explosion our mortar turned into.
+        var explosion = mortar.convertToExplosion();
+
+        // Splice that in place of the "exploded" mortar
+        array.splice(index, 1, explosion);
+
+      };
+    });
+  }
+
+
   // Clear any faded explosions from the mortars array
   function _clearFadedExplosions(){
-    console.log("TODO: _clearFadedExplosions");
     _firedMortars.forEach(function(mortar, index, array){
-      if(mortar.exploded == true){
-        console.log("CLEAR ME")
-        array.splice(index);
+      if(mortar.finished == true){
+        array.splice(index, 1);
       };
     });
   }
@@ -193,7 +218,3 @@ ML.MainModule = (function(){
   };
 
 })()
-
-// Finale -- double check privacy
-// Refactor: make smarter rendering, e.g. launcher not full, just updating CSS
-// Note the difference between the closures (_vars) and the instance vars

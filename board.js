@@ -31,7 +31,6 @@ ML.BoardModule = (function(){
 
   // Check if the coordinates are out-of-bounds
   function checkCoordsOutOfBounds(coords){
-    console.log("checking coofd");
     return  coords.x < this.bounds.left    ||
             coords.x > this.bounds.right   ||
             coords.y < this.bounds.top     ||
@@ -40,7 +39,12 @@ ML.BoardModule = (function(){
 
   // Convert coords that are out-of-bounds from the
   // playing area into coords that are in-bounds
-  function convertToInBoundsCoords(coords){}
+  function convertToInBoundsCoords(coords){
+    return { 
+        x: Math.min( Math.max( coords.x, this.bounds.left ), this.bounds.right ),
+        y: Math.min( Math.max( coords.y, this.bounds.top ), this.bounds.bottom )
+      }
+  }
 
 
   // Return all public methods and properties
