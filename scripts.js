@@ -35,7 +35,7 @@ var ML = {
 
     console.log("Just measured " + degrees + " degrees!");
 
-    return degrees;
+    return radians;
   },
 
 
@@ -56,17 +56,7 @@ var ML = {
   },
 
 
-  // Apply equations of motion to an object with
-  // an initial position and velocity.
-  // It modifies the object to reflect the updates.
-  incrementMotion: function(obj){},
 
-  // Go from normal X,Y to as-rendered coords if needed
-  // e.g. fo,r the `top` or `bottom` attributes
-  reverseCoords: function(coords){},
-
-  // Render a div that's a circle at the specified coords
-  renderCircle: function(coords, radius){},
 
 
 
@@ -83,6 +73,10 @@ var ML = {
   // the launcher was last pointing at.
   LauncherModule: (function (){          
 
+    var _initialFuel = 1;
+    var _maxFuel = 20;
+    var _initialAmmo = 10;
+
     // Constructor for a new Launcher
     // Its prototype is added to by the 
     // functions defined below
@@ -91,9 +85,9 @@ var ML = {
                     y: ML.BoardModule.bounds.bottom };
       this.angle = 0;
       this.width = 100;
-      this.ammo = 10;
+      this.ammo = _initialAmmo;
       this.fueling = false;
-      this.fuel = 0;
+      this.fuel = _initialFuel;
     }
 
 
@@ -101,7 +95,21 @@ var ML = {
     // velocity which is derived from the _fuel
     // Remove _fueling state and reset _fuel
     Launcher.prototype.fireMortar = function(){
-      console.log("TODO: Fire Mortar!");
+
+      // Derive the initial velocity for the mortar
+      var xVel = Math.abs( this.fuel * Math.cos(this.angle) );
+      var yVel = -Math.abs( this.fuel * Math.sin(this.angle) );
+      var vel = { x: xVel, y: yVel };
+
+      // Create the new mortar and add to 
+      // the MainModule's firedMortars array
+      var mortar = new ML.MortarModule.Mortar(this.pos, vel);
+      ML.MainModule.addFiredMortar(mortar);
+
+      // Alter state to reflect the recent firing
+      this.fueling = false;
+      this.fuel = _initialFuel;
+      this.ammo = this.ammo - 1;
     }
 
 
@@ -109,12 +117,15 @@ var ML = {
     // if _fueling, increment fuel
     Launcher.prototype.tic = function(){
       this.updateAngle();
+      if( this.fueling == true ){
+        this.fuel = Math.min(_maxFuel, this.fuel + 1);
+      }
     }
 
 
     // Toggle the fueling state to active
     Launcher.prototype.startFueling = function(){
-      console.log("TODO: Fire Mortar!");
+      this.fueling = true;
     }
 
 
@@ -130,9 +141,10 @@ var ML = {
           .addClass("launcher")
           .css("left",this.pos.x - this.width / 2)
           .css("top",this.pos.y - this.width / 4)
-          .css("-ms-transform","rotate(" + this.angle + "deg)") // IE 9
-          .css("-webkit-transform", "rotate(" + this.angle + "deg)") // Chrome, Safari, Opera
-          .css("transform", "rotate(" + this.angle + "deg)");
+          .css("-ms-transform","rotate(" + this.angle + "rad)") // IE 9
+          .css("-webkit-transform", "rotate(" + this.angle + "rad)") // Chrome, Safari, Opera
+          .css("transform", "rotate(" + this.angle + "rad)")
+          .css("border-left-width", ( this.fuel - _initialFuel ) * 2 + "px" );
       $("#playing-field").append($launcherImage);
     }
 
@@ -166,33 +178,59 @@ var ML = {
 
     // Position and velocity variables are objects
     // with x and y coordinates.
-    var _pos, _vel;
 
     // Hard code the initial display radius
-    var _radius = 10;
+    var _initialRadius = 10;
 
     // Construct a new mortar object by initializing
     // all necessary variables
-    function Mortar(x,y){}
+    function Mortar(pos, vel){
+      this.pos = {};
+      this.vel = {};
+      this.pos.x = pos.x;
+      this.pos.y = pos.y;
+      this.vel.x = vel.x;
+      this.vel.y = vel.y;
+      this.radius = _initialRadius;
+      this.exploded = false;
+    }
 
     // Draw a circle at the right position
-    function render(){}
+    Mortar.prototype.render = function(){
+      $mortar = $("<div></div>")
+          .addClass("mortar")
+          .css("width",   this.radius + "px" )
+          .css("height",  this.radius + "px" )
+          .css("left",    this.pos.x - this.radius / 2 )
+          .css("top",     this.pos.y - this.radius / 2 )
+      $("#playing-field").append($mortar);
+    }
 
     // For each "tic" of the game, increment
     // the motion of the mortar.
     // If the new position is out of bounds, explode.
-    function tic(){}
+    Mortar.prototype.tic = function(){
+      this.pos.x = this.pos.x + this.vel.x;
+      this.pos.y = this.pos.y + this.vel.y;
+      this.vel.y = this.vel.y + .5;  // Gravity
+
+      if(ML.BoardModule.checkCoordsOutOfBounds(this.pos)){
+        console.log(this.pos);
+        this.explode();
+      }
+    }
 
     // Explode the mortar by removing it from the main
     // mortars queue and replacing it with an Explosion
     // that's created at the nearest in-bounds coords
-    function _explode(){}
+    Mortar.prototype.explode = function(){
+      console.log("BOOM");
+      this.exploded = true;
+    }
 
     // Return all public vars and functions
     return {
       Mortar: Mortar,
-      render: render,
-      tic: tic
     };
   })(),
 
@@ -239,37 +277,35 @@ var ML = {
   // The Board is the keeper of all things positional
   BoardModule: (function(){
 
-    // Set up board properties which will be accessed
-    // by lots of other methods
-    // The coords of a typical boundary rect come as:
-    // {  bottom: 510, height: 502, left: 8, 
-    //    right: 810, top: 8, width: 802  }
-    // NOTE: 0,0 in the browser is the top left corner
 
     // Hang onto the playing board element so we don't
     // need to requery the DOM every time we want it
     // We'll wait to set it until the new Board is
     // created since the DOM hasn't been loaded yet
     // right here
+    // NOTE: 0,0 in the browser is the top left corner
+    // NOTE: coords of a boundary rectangle look like
+    // {  bottom: 510, height: 502, left: 8, 
+    //    right: 810, top: 8, width: 802  }
     var $board; 
     var bounds; 
 
     // We'll have to call this from MainModule after
     // the DOM is loaded
-    function setBoardVars(){
+    function initBoardVars(){
       this.$board = $("#playing-field");
       this.bounds = this.$board.get(0).getBoundingClientRect();
     }
 
 
-    // We need a getter because this is a module
-    // and otherwise 
-    function getBoardBounds(){
-      return bounds
-    }
-
     // Check if the coordinates are out-of-bounds
-    function checkCoordsOutOfBounds(coords){}
+    function checkCoordsOutOfBounds(coords){
+      console.log("checking coofd");
+      return  coords.x < this.bounds.left    ||
+              coords.x > this.bounds.right   ||
+              coords.y < this.bounds.top     ||
+              coords.y > this.bounds.bottom;
+    }
 
     // Convert coords that are out-of-bounds from the
     // playing area into coords that are in-bounds
@@ -282,7 +318,7 @@ var ML = {
       bounds: bounds,
       checkCoordsOutOfBounds: checkCoordsOutOfBounds,
       convertToInBoundsCoords: convertToInBoundsCoords,
-      setBoardVars: setBoardVars
+      initBoardVars: initBoardVars
     };
   })(),
 
@@ -318,8 +354,9 @@ var ML = {
     // Kick off game loop
     function init(){ 
       console.log("Initializing Main..."); 
-      ML.BoardModule.setBoardVars();
+      ML.BoardModule.initBoardVars();
       _buildLaunchers();
+      _activeLauncher = _launchers[0];
       _listenForMouseMove();
       _listenForMouseDown();
       _listenForMouseUp();
@@ -356,7 +393,7 @@ var ML = {
     // startFueling the activeLauncher
     function _listenForMouseDown(){
       $(window).on("mousedown",function(e){
-        console.log(e);
+        _activeLauncher.startFueling();
       })
     }
 
@@ -366,7 +403,8 @@ var ML = {
     // activateNextLauncher
     function _listenForMouseUp(){
       $(window).on("mouseup",function(e){
-        console.log(e);
+        _activeLauncher.fireMortar();
+        _activateNextLauncher();
       })
     }
 
@@ -375,12 +413,12 @@ var ML = {
     // clearRenderedObjects
     // render Mortars
     function _tic(){
-      console.log("TIC!");
       _ticLaunchers();
       _ticMortars();
       _clearRenderedObjects();
       _renderLaunchers();
       _renderMortars();
+      _clearFadedExplosions();
     }
 
 
@@ -397,13 +435,32 @@ var ML = {
     // which actually has ammo.
     // Throw an error ending the game if out of ammo
     // in all launchers
-    function _activateNextLauncher(){}
+    function _activateNextLauncher(){
+      // Does nothing with only one launcher
+    }
+
+
+    // Add a mortar to the fired mortars array
+    function addFiredMortar(mortar){
+      _firedMortars.push(mortar);
+    }
 
 
     // Clears the whole board in prep for another render
     function _clearRenderedObjects(){
-      console.log("TODO: clear rendered objects");
       ML.BoardModule.$board.html("");
+    }
+
+
+    // Clear any faded explosions from the mortars array
+    function _clearFadedExplosions(){
+      console.log("TODO: _clearFadedExplosions");
+      _firedMortars.forEach(function(mortar, index, array){
+        if(mortar.exploded == true){
+          console.log("CLEAR ME")
+          array.splice(index);
+        };
+      });
     }
 
 
@@ -411,20 +468,24 @@ var ML = {
     function _ticLaunchers(){
       _launchers.forEach(function(launcher){
         launcher.tic();
-      })
+      });
     }
 
 
     // run the increment "tic" on all mortars
     function _ticMortars(){
-
+      _firedMortars.forEach(function(mortar){
+        mortar.tic();
+      });
     }
 
 
     // Go through the queue rendering all mortars and
     // explosions
     function _renderMortars(){
-      console.log("TODO: Render Mortars");
+      _firedMortars.forEach(function(mortar){
+        mortar.render();
+      });
     }
 
 
@@ -439,6 +500,7 @@ var ML = {
     // Return public properties and methods
     // Make sure mousePos is available
     return {
+      addFiredMortar: addFiredMortar,
       init: init,
       mousePos: mousePos
     };
@@ -452,3 +514,5 @@ $(document).ready(function(){
 });
 
 // Finale -- double check privacy
+// Refactor: make smarter rendering, e.g. launcher not full, just updating CSS
+// Note the difference between the closures (_vars) and the instance vars
