@@ -78,7 +78,7 @@ ML.MainModule = (function(){
   // When the player initiates a click
   // startFueling the activeLauncher
   function _listenForMouseDown(){
-    $(window).on("mousedown",function(e){
+    ML.BoardModule.$board.on("mousedown",function(e){
       _activeLauncher.startFueling();
     })
   }
@@ -88,7 +88,7 @@ ML.MainModule = (function(){
   // fireMortar from the activeLauncher
   // activateNextLauncher
   function _listenForMouseUp(){
-    $(window).on("mouseup",function(e){
+    ML.BoardModule.$board.on("mouseup",function(e){
       _activeLauncher.fireMortar();
       _activateNextLauncher();
     })
