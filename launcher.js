@@ -76,6 +76,8 @@ ML.LauncherModule = (function (){
   // `this` will be the Launcher instance 
   Launcher.prototype.render = function(){
 
+    // The border gets fatter the longer you've been
+    // fueling for (redder)
     var borderWidth = ( this.fuel - _initialFuel ) * 2;
 
     // Do some trigonometry so the border doesn't push

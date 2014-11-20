@@ -12,7 +12,7 @@ ML.ExplosionModule = (function(){
 
   var pos = {};
   var _initialRadius;
-  var _expansionRate = 5;
+  var _expansionRate = 4;
   var _maxRadius = 100;
 
 
@@ -41,7 +41,6 @@ ML.ExplosionModule = (function(){
   // Explosion's prototype inherits from the parent 
   // Mortar's prototype
   Explosion.prototype = Object.create(ML.MortarModule.Mortar.prototype);
-
 
   // Every tic of the game, increment the radius.
   // If the radius is too large, finishExploding
